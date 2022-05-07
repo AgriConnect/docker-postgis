@@ -1,9 +1,10 @@
 FROM postgres:12-alpine3.15
 
-LABEL maintainer="PostGIS Project - https://postgis.net"
+LABEL maintainer="Nguyễn Hồng Quân - https://quan.hoabinh.vn"
 
 ENV POSTGIS_VERSION 3.2.1
 ENV POSTGIS_SHA256 1e9cc4c4f390e4c3be4f5c125a72f39dfa847412332952429952cbd731ac9ba3
+ENV TS_VERSION 2.6.1
 
 RUN set -eux \
     \
@@ -127,3 +128,39 @@ RUN set -eux \
 
 COPY ./initdb-postgis.sh /docker-entrypoint-initdb.d/10_postgis.sh
 COPY ./update-postgis.sh /usr/local/bin
+
+# TimescaleDB
+
+RUN set -ex \
+    && apk add --no-cache --virtual .fetch-deps \
+                ca-certificates \
+                git \
+                openssl \
+                openssl-dev \
+                tar \
+    && mkdir -p /build/ \
+    && git clone https://github.com/timescale/timescaledb /build/timescaledb \
+    \
+    && apk add --no-cache --virtual .build-deps \
+                coreutils \
+                dpkg-dev dpkg \
+                gcc \
+                krb5-dev \
+                libc-dev \
+                make \
+                cmake \
+                util-linux-dev \
+    \
+    # Build current version \
+    && cd /build/timescaledb && rm -fr build \
+    && git checkout ${TS_VERSION} \
+    && ./bootstrap -DCMAKE_BUILD_TYPE=RelWithDebInfo -DREGRESS_CHECKS=OFF -DTAP_CHECKS=OFF -DGENERATE_DOWNGRADE_SCRIPT=ON -DWARNINGS_AS_ERRORS=OFF -DPROJECT_INSTALL_METHOD="docker"${OSS_ONLY} \
+    && cd build && make install \
+    && cd ~ \
+    \
+    && if [ "${OSS_ONLY}" != "" ]; then rm -f $(pg_config --pkglibdir)/timescaledb-tsl-*.so; fi \
+    && apk del .fetch-deps .build-deps \
+    && rm -rf /build \
+    && sed -r -i "s/[#]*\s*(shared_preload_libraries)\s*=\s*'(.*)'/\1 = 'timescaledb,\2'/;s/,'/'/" /usr/local/share/postgresql/postgresql.conf.sample
+
+COPY ./timescale-alpine-initdb.d/* /docker-entrypoint-initdb.d/

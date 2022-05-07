@@ -14,6 +14,10 @@ Note: As of PostGIS v3.x, raster has been factored out into a separate extension
 
 Unless `-e POSTGRES_DB` is passed to the container at startup time, this database will be named after the admin user (either `postgres` or the user specified with `-e POSTGRES_USER`). If you would prefer to use the older template database mechanism for enabling PostGIS, the image also provides a PostGIS-enabled template database called `template_postgis`.
 
+### Additional note
+
+This branch has TimescaleDB installed to the Alpine images. The image is for running test in CI/CD, so it doesn't contain TimescaleDB maintenance tools.
+
 ## Usage
 
 In order to run a basic container capable of serving a PostGIS-enabled database, start a container as follows:
@@ -25,17 +29,17 @@ For more detailed instructions about how to start and control your Postgres cont
 Once you have started a database container, you can then connect to the database either directly on the running container:
 
     docker exec -ti some-postgis psql -U postgres
-    
+
 ... or starting a new container to run as a client. In this case you can use a user-defined network to link both containers:
 
     docker network create some-network
-    
+
     # Server container
     docker run --name some-postgis --network some-network -e POSTGRES_PASSWORD=mysecretpassword -d postgis/postgis
-    
+
     # Client container
     docker run -it --rm --network some-network postgis/postgis psql -h some-postgis -U postgres
-    
+
 Check the documentation on the [`postgres` image](https://registry.hub.docker.com/_/postgres/) and [Docker networking](https://docs.docker.com/network/) for more details and alternatives on connecting different containers.
 
 See [the PostGIS documentation](http://postgis.net/docs/postgis_installation.html#create_new_db_extensions) for more details on your options for creating and using a spatially-enabled database.
