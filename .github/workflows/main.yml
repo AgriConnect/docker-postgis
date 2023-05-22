@@ -15,23 +15,17 @@ jobs:
   make-docker-images:
     strategy:
       matrix:
-        postgres: [9.6, 10, 11, 12, 13, 14]
-        postgis: ['2.5', '3.2']
+        postgres: [11, 12, 13, 14, 15]
+        postgis: ['3.3']
         variant: [default, alpine]
-        exclude:
-          - postgres: 12
-            postgis: '2.5'
-          - postgres: 13
-            postgis: '2.5'
-          - postgres: 14
-            postgis: '2.5'
         include:
-          - postgres: 13
-            postgis: master
-            variant: default
           - postgres: 14
             postgis: master
             variant: default
+          - postgres: 15
+            postgis: master
+            variant: default
+
     name: Build docker image for ${{ matrix.postgres }}-${{ matrix.postgis }} variant ${{ matrix.variant }}
     runs-on: ubuntu-20.04
     continue-on-error: ${{ matrix.postgis == 'master' }}
@@ -41,7 +35,7 @@ jobs:
 
     steps:
     - name: Checkout source
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Build docker image for ${{ env.VERSION }} ${{ env.VARIANT }}
       run: make test
@@ -57,7 +51,6 @@ jobs:
       if: ${{  (github.ref == 'refs/heads/master') && (github.event_name != 'pull_request')  }}
       env:
         DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-        DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
         DOCKERHUB_ACCESS_TOKEN: ${{ secrets.DOCKERHUB_ACCESS_TOKEN }}
       run: make push
 
