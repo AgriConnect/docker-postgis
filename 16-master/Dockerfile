@@ -2,14 +2,15 @@
 # NOTE: THIS DOCKERFILE IS GENERATED VIA "make update"! PLEASE DO NOT EDIT IT DIRECTLY.
 #
 
-# "experimental" ;  only for testing! Changes expected!
-# multi-stage dockerfile;  minimal docker version >= 17.05
+# "Experimental"; solely for testing purposes. Anticipate frequent changes!
+# This is a multi-stage Dockerfile, requiring a minimum Docker version of 17.05.
 
 ARG DOCKER_CMAKE_BUILD_TYPE=Release
-FROM postgres:14-bullseye as builder
+ARG CGAL_GIT_BRANCH=5.6.x-branch
+FROM postgres:16-bullseye as builder
 
 LABEL maintainer="PostGIS Project - https://postgis.net" \
-      org.opencontainers.image.description="PostGIS - master  spatial database extension with PostgreSQL 14 bullseye" \
+      org.opencontainers.image.description="PostGIS - master  spatial database extension with PostgreSQL 16 bullseye" \
       org.opencontainers.image.source="https://github.com/postgis/docker-postgis"
 
 WORKDIR /
@@ -83,20 +84,21 @@ ARG DOCKER_CMAKE_BUILD_TYPE
 ENV DOCKER_CMAKE_BUILD_TYPE=${DOCKER_CMAKE_BUILD_TYPE}
 
 # cgal & sfcgal
-# By utilizing the latest commit of the CGAL 5.5.x-branch and implementing a header-only build for SFCGAL,
+# By utilizing the latest commit of the CGAL 5.x.x-branch and implementing a header-only build for SFCGAL,
 # one can benefit from the latest CGAL patches while avoiding compatibility issues.
-ENV CGAL_GIT_BRANCH 5.5.x-branch
-ENV CGAL55_GIT_HASH f93ccadc282d09774c4a22914f71723ceadbd7ce
-ENV SFCGAL_GIT_HASH df3c2ccc015d4a85ac672fc307d2c7c324cccca7
+ARG CGAL_GIT_BRANCH
+ENV CGAL_GIT_BRANCH=${CGAL_GIT_BRANCH}
+ENV CGAL5X_GIT_HASH d314e31e9e08879cd5fbbb49343bb1d8c76dd4e5
+ENV SFCGAL_GIT_HASH aa1194bb946460b6ec5a29d31d6a19e9694b3df7
 RUN set -ex \
     && mkdir -p /usr/src \
     && cd /usr/src \
     && git clone --branch ${CGAL_GIT_BRANCH} https://github.com/CGAL/cgal  \
     && cd cgal \
-    && git checkout ${CGAL55_GIT_HASH} \
+    && git checkout ${CGAL5X_GIT_HASH} \
     && git log -1 > /_pgis_cgal_last_commit.txt \
     && cd /usr/src \
-    && git clone https://gitlab.com/Oslandia/SFCGAL.git \
+    && git clone https://gitlab.com/SFCGAL/SFCGAL.git \
     && cd SFCGAL \
     && git checkout ${SFCGAL_GIT_HASH} \
     && git log -1 > /_pgis_sfcgal_last_commit.txt \
@@ -120,7 +122,7 @@ RUN set -ex \
     && rm -fr /usr/src/cgal
 
 # proj
-ENV PROJ_GIT_HASH fc456d9f23ad6f3aad996cd08cc36be04adcd2d0
+ENV PROJ_GIT_HASH 167e99d2b9f12178de6e2038e86a553f6130aea8
 RUN set -ex \
     && cd /usr/src \
     && git clone https://github.com/OSGeo/PROJ.git \
@@ -150,7 +152,7 @@ RUN set -ex \
     && rm -fr /usr/src/PROJ
 
 # geos
-ENV GEOS_GIT_HASH 2cac99d49fef48d4054f4d74bfc3cbd7bc8bcdcf
+ENV GEOS_GIT_HASH b3d6d20a94fdbe6a8401d176668a6d7d76465673
 RUN set -ex \
     && cd /usr/src \
     && git clone https://github.com/libgeos/geos.git \
@@ -166,7 +168,7 @@ RUN set -ex \
     && rm -fr /usr/src/geos
 
 # gdal
-ENV GDAL_GIT_HASH 1e23a32efcba827e591d6a198bbb2af609a22ca8
+ENV GDAL_GIT_HASH 187217953752a7ba4e39c9ad37b5f37cdfa77989
 RUN set -ex \
     && cd /usr/src \
     && git clone https://github.com/OSGeo/gdal.git \
@@ -250,7 +252,7 @@ RUN set -ex \
 # -------------------------------------------
 # STAGE  final
 # -------------------------------------------
-FROM postgres:14-bullseye
+FROM postgres:16-bullseye
 
 ARG DOCKER_CMAKE_BUILD_TYPE
 ENV DOCKER_CMAKE_BUILD_TYPE=${DOCKER_CMAKE_BUILD_TYPE}
@@ -297,12 +299,13 @@ RUN set -ex \
 COPY --from=builder /_pgis*.* /
 COPY --from=builder /usr/local /usr/local
 
-ENV CGAL_GIT_BRANCH 5.5.x-branch
-ENV CGAL55_GIT_HASH f93ccadc282d09774c4a22914f71723ceadbd7ce
-ENV SFCGAL_GIT_HASH df3c2ccc015d4a85ac672fc307d2c7c324cccca7
-ENV PROJ_GIT_HASH fc456d9f23ad6f3aad996cd08cc36be04adcd2d0
-ENV GEOS_GIT_HASH 2cac99d49fef48d4054f4d74bfc3cbd7bc8bcdcf
-ENV GDAL_GIT_HASH 1e23a32efcba827e591d6a198bbb2af609a22ca8
+ARG CGAL_GIT_BRANCH
+ENV CGAL_GIT_BRANCH=${CGAL_GIT_BRANCH}
+ENV CGAL5X_GIT_HASH d314e31e9e08879cd5fbbb49343bb1d8c76dd4e5
+ENV SFCGAL_GIT_HASH aa1194bb946460b6ec5a29d31d6a19e9694b3df7
+ENV PROJ_GIT_HASH 167e99d2b9f12178de6e2038e86a553f6130aea8
+ENV GEOS_GIT_HASH b3d6d20a94fdbe6a8401d176668a6d7d76465673
+ENV GDAL_GIT_HASH 187217953752a7ba4e39c9ad37b5f37cdfa77989
 
 # Minimal command line test ( fail fast )
 RUN set -ex \
@@ -321,7 +324,7 @@ RUN set -ex \
             || echo "ogr2ogr missing PostgreSQL driver" && exit 1
 
 # install postgis
-ENV POSTGIS_GIT_HASH 6080076af801c1b13f1a6bafa88d5ef41b1cf0a3
+ENV POSTGIS_GIT_HASH 4338f0b59c47d651347564c74003598b4c55b8c1
 
 RUN set -ex \
     && apt-get update \
@@ -333,6 +336,8 @@ RUN set -ex \
       build-essential \
       ca-certificates \
       cmake \
+      docbook-xml \
+      docbook5-xml \
       g++ \
       git \
       libboost-all-dev \
@@ -347,6 +352,7 @@ RUN set -ex \
       libtiff-dev \
       libtool \
       libxml2-dev \
+      libxml2-utils \
       make \
       pkg-config \
       postgresql-server-dev-$PG_MAJOR \
@@ -363,8 +369,6 @@ RUN set -ex \
 # configure options taken from:
 # https://anonscm.debian.org/cgit/pkg-grass/postgis.git/tree/debian/rules?h=jessie
     && ./configure \
-#       --with-gui \
-        --with-pcredir="$(pcre-config --prefix)" \
         --enable-lto \
     && make -j$(nproc) \
     && make install \
@@ -377,7 +381,7 @@ RUN set -ex \
     && mkdir /tempdb \
     && chown -R postgres:postgres /tempdb \
     && su postgres -c 'pg_ctl -D /tempdb init' \
-    && su postgres -c 'pg_ctl -D /tempdb start' \
+    && su postgres -c 'pg_ctl -D /tempdb -c -l /tmp/logfile -o '-F' start ' \
     && ldconfig \
     && cd regress \
     && make -j$(nproc) check RUNTESTFLAGS=--extension PGUSER=postgres \
@@ -396,6 +400,7 @@ RUN set -ex \
     \
     && su postgres -c 'pg_ctl -D /tempdb --mode=immediate stop' \
     && rm -rf /tempdb \
+    && rm -rf /tmp/logfile \
     && rm -rf /tmp/pgis_reg \
 # clean
     && cd / \
@@ -407,6 +412,8 @@ RUN set -ex \
       bison \
       build-essential \
       cmake \
+      docbook-xml \
+      docbook5-xml \
       g++ \
       git \
       libboost-all-dev \
@@ -420,6 +427,7 @@ RUN set -ex \
       libtiff-dev \
       libtool \
       libxml2-dev \
+      libxml2-utils \
       make \
       pkg-config \
       postgresql-server-dev-$PG_MAJOR \
