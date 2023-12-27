@@ -20,7 +20,7 @@ Unless `-e POSTGRES_DB` is passed to the container at startup time, this databas
 
 ### Additional note
 
-This branch has TimescaleDB installed to the Alpine.
+This branch has TimescaleDB and [pgx_ulid](https://github.com/pksunkara/pgx_ulid) extensions installed to Alpine Linux.
 
 # Versions (2023-12-03)
 
